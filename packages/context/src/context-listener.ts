@@ -18,7 +18,8 @@ export type ContextEventType = 'bind' | 'unbind' | string;
  */
 export interface ContextEventListener {
   /**
-   * A filter function to match bindings
+   * An optional filter function to match bindings. If not present, the listener
+   * will be notified of all binding events.
    */
   filter?: BindingFilter;
 

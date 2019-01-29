@@ -15,7 +15,7 @@ import {
 } from '../..';
 
 import {promisify} from 'util';
-const setImmediatePromise = promisify(setImmediate);
+const setImmediateAsync = promisify(setImmediate);
 
 /**
  * Create a subclass of context so that we can access parents and registry
@@ -38,11 +38,11 @@ class TestContext extends Context {
         resolve();
         return;
       }
-      this.eventQueue.on('end', err => {
+      this.eventQueue.once('end', err => {
         if (err) reject(err);
         else resolve();
       });
-      this.eventQueue.on('error', err => {
+      this.eventQueue.once('error', err => {
         reject(err);
       });
     });
@@ -759,11 +759,23 @@ describe('Context', () => {
 
     beforeEach(givenListeners);
 
-    it('emits bind event to matching listeners', async () => {
+    it('emits one bind event to matching listeners', async () => {
       ctx.bind('foo').to('foo-value');
       await ctx.waitUntilEventsProcessed();
       expect(events).to.eql(['1:foo:foo-value:bind', '2:foo:foo-value:bind']);
       expect(nonMatchingListenerCalled).to.be.false();
+    });
+
+    it('emits multiple bind events to matching listeners', async () => {
+      ctx.bind('foo').to('foo-value');
+      ctx.bind('xyz').to('xyz-value');
+      await ctx.waitUntilEventsProcessed();
+      expect(events).to.eql([
+        '1:foo:foo-value:bind',
+        '2:foo:foo-value:bind',
+        '1:xyz:xyz-value:bind',
+        '2:xyz:xyz-value:bind',
+      ]);
     });
 
     it('emits unbind event to matching listeners', async () => {
@@ -820,7 +832,7 @@ describe('Context', () => {
       const matchingAsyncListener: ContextEventListener = {
         filter: binding => true,
         listen: async (event, binding) => {
-          await setImmediatePromise();
+          await setImmediateAsync();
           const val = binding.getValue(ctx);
           events.push(`2:${binding.key}:${val}:${event}`);
         },
@@ -829,7 +841,7 @@ describe('Context', () => {
       const matchingAsyncListenerWithError: ContextEventListener = {
         filter: binding => binding.key === 'bar',
         listen: async (event, binding) => {
-          await setImmediatePromise();
+          await setImmediateAsync();
           throw new Error('something wrong');
         },
       };
